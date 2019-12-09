@@ -11,17 +11,17 @@ import java.util.function.Supplier;
 
 public class VirtualMachine {
 	
-	private static int manualInputSupplier() {
+	private static long manualInputSupplier() {
 		
 		System.out.print("Input : ");
 		
 		Scanner scanner = new Scanner(System.in);
-		int ret = 0;
+		long ret = 0;
 		
 		for(;;) {
 			
 			try {
-				ret = scanner.nextInt(10);
+				ret = scanner.nextLong(10);
 				break;
 			} catch (InputMismatchException ignored) {
 				System.out.print("Invalid input, please retry : ");
@@ -34,19 +34,22 @@ public class VirtualMachine {
 		
 	}
 	
-	private static void manualOutputConsumer(int value) {
+	private static void manualOutputConsumer(long value) {
 		System.out.println("Output : " + value);
 	}
 	
+	private static final Predicate<OpCodeType> TRUE_PREDICATE = (oct) -> true;
+	
 	// Class //
 	
-	private int[] memory = null;
+	private long[] memory = null;
 	private boolean debug = false;
 	
-	private Supplier<Integer> inputSupplier;
-	private Consumer<Integer> outputConsumer;
+	private Supplier<Long> inputSupplier;
+	private Consumer<Long> outputConsumer;
 	
 	private final AtomicInteger pc = new AtomicInteger();
+	private final AtomicInteger rb = new AtomicInteger(); // Relative Base Position
 	
 	public VirtualMachine() {
 		
@@ -63,15 +66,15 @@ public class VirtualMachine {
 		if (this.debug) System.out.println(message);
 	}
 	
-	public void debugParameter(int i, boolean mode, int raw, int valueAtAddress) {
-		this.debug("  Parameter " + i + " : " + (mode ? "value  " : "address") + " = " + raw + (mode ? "" : (" <" + valueAtAddress + ">")));
+	public void debugParameter(int i, ParameterMode mode, long raw, long valueAtAddress) {
+		this.debug("  Parameter " + i + " : " + mode.name() + " = " + raw + (mode == ParameterMode.IMMEDIATE ? "" : (" <" + valueAtAddress + ">")));
 	}
 	
-	public void setInputSupplier(Supplier<Integer> inputSupplier) {
+	public void setInputSupplier(Supplier<Long> inputSupplier) {
 		this.inputSupplier = inputSupplier;
 	}
 	
-	public void setOutputConsumer(Consumer<Integer> outputConsumer) {
+	public void setOutputConsumer(Consumer<Long> outputConsumer) {
 		this.outputConsumer = outputConsumer;
 	}
 	
@@ -82,32 +85,57 @@ public class VirtualMachine {
 		
 	}
 	
-	public void setMemory(int[] memory) {
+	public void setMemory(long[] memory) {
+		
+		
 		
 		this.memory = memory;
 		this.pc.set(0);
+		this.rb.set(0);
 		
 	}
 	
-	public int[] getMemory() {
+	public AtomicInteger getPc() {
+		return this.pc;
+	}
+	
+	public AtomicInteger getRb() {
+		return this.rb;
+	}
+	
+	public long[] getMemory() {
 		return this.memory;
 	}
 	
-	public void setAt(int address, int num) {
+	public void setAt(int address, long num) {
 		this.checkMemorySet();
+		this.upgradeMemoryForAddress(address);
 		this.memory[address] = num;
 	}
 	
-	public int getAt(int address) {
+	public long getAt(int address) {
 		this.checkMemorySet();
+		this.upgradeMemoryForAddress(address);
 		return this.memory[address];
 	}
 	
-	public int requestInput() {
+	private void upgradeMemoryForAddress(int address) {
+		
+		if (address >= this.memory.length) {
+			
+			long[] newMemory = new long[address + 1];
+			System.arraycopy(this.memory, 0, newMemory, 0, this.memory.length);
+			this.memory = newMemory;
+			
+		}
+		
+	}
+	
+	public long requestInput() {
 		return this.inputSupplier.get();
 	}
 	
-	public void requestOutput(int value) {
+	public void requestOutput(long value) {
 		this.outputConsumer.accept(value);
 	}
 	
@@ -121,29 +149,30 @@ public class VirtualMachine {
 		
 		this.checkMemorySet();
 		
-		int current = -1;
+		long current = -1;
 		OpCodeType opCodeType = null;
-		boolean[] modes = new boolean[2];
+		ParameterMode[] modes = new ParameterMode[2];
 		
 		while (opCodeType == null || whileCondition.test(opCodeType)) {
 			
 			try {
 				
 				current = this.memory[this.pc.get()];
-				opCodeType = OpCodeType.fromIntCode(current % 100);
+				opCodeType = OpCodeType.fromIntCode((int) (current % 100L));
 				
 				if (opCodeType == null)
 					throw new InvalidOpCodeException();
 				
 				if (modes.length != opCodeType.modesCount)
-					modes = new boolean[opCodeType.modesCount];
+					modes = new ParameterMode[opCodeType.modesCount];
 				
 				for (int i = 0; i < modes.length; ++i)
-					modes[i] = Utils.getNthDigit(current, 10, i + 2) == 1;
+					modes[i] = ParameterMode.values()[Utils.getNthDigit(current, 10, i + 2)];
 				
-				this.debug("[" + this.pc.get() + "] " + opCodeType.name());
-				opCodeType.execute(this, this.memory, modes, this.pc.get(), this.pc);
+				this.debug("[" + this.pc.get() + "] " + opCodeType.name() + " (" + current + ")");
+				opCodeType.execute(this, modes, this.pc.get(), this.pc, this.rb);
 				this.debug("  PC now at " + this.pc.get());
+				this.debug("  RB now at " + this.rb.get());
 				
 			} catch (IndexOutOfBoundsException bounds) {
 				
@@ -167,7 +196,7 @@ public class VirtualMachine {
 	}
 	
 	public boolean run() {
-		return this.runWhile((opcode) -> true);
+		return this.runWhile(TRUE_PREDICATE);
 	}
 	
 }

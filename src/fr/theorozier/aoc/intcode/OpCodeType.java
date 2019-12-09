@@ -6,47 +6,51 @@ import java.util.concurrent.atomic.AtomicInteger;
 
 public enum OpCodeType {
 
-	ADD (1, 2) {
+	ADD (1, 3) {
 		
 		@Override
-		public void execute(VirtualMachine machine, int[] memory, boolean[] modes, int pc, AtomicInteger pcAccess) throws RuntimeException {
+		public void execute(VirtualMachine machine, ParameterMode[] modes, int pc, AtomicInteger pcAccess, AtomicInteger rbAccess) throws RuntimeException {
 			
-			int v1 = getRealValue(machine,0, memory, modes[0], memory[pc + 1]);
-			int v2 = getRealValue(machine,1, memory, modes[1], memory[pc + 2]);
-			int at = memory[pc + 3];
+			long v1 = getRealValue(machine,0, modes[0], machine.getAt(pc + 1), rbAccess);
+			long v2 = getRealValue(machine,1, modes[1], machine.getAt(pc + 2), rbAccess);
+			int at = getRealPosition(machine, modes[2], machine.getAt(pc + 3), rbAccess);
 			
-			memory[at] = v1 + v2;
+			machine.setAt(at, v1 + v2);
 			pcAccess.set(pc + 4);
 			
-			machine.debug("  " + v1 + "+" + v2 + "=" + memory[at] + " ==> " + at);
+			machine.debug("  " + v1 + "+" + v2 + "=" + machine.getAt(at) + " ==> " + at);
 			
 		}
 		
 	},
-	MULT (2, 2) {
+	MULT (2, 3) {
 		
 		@Override
-		public void execute(VirtualMachine machine, int[] memory, boolean[] modes, int pc, AtomicInteger pcAccess) throws RuntimeException {
+		public void execute(VirtualMachine machine, ParameterMode[] modes, int pc, AtomicInteger pcAccess, AtomicInteger rbAccess) throws RuntimeException {
 			
-			int v1 = getRealValue(machine,0, memory, modes[0], memory[pc + 1]);
-			int v2 = getRealValue(machine,1, memory, modes[1], memory[pc + 2]);
-			int at = memory[pc + 3];
+			long v1 = getRealValue(machine,0, modes[0], machine.getAt(pc + 1), rbAccess);
+			long v2 = getRealValue(machine,1, modes[1], machine.getAt(pc + 2), rbAccess);
+			int at = getRealPosition(machine, modes[2], machine.getAt(pc + 3), rbAccess);
 			
-			memory[at] = v1 * v2;
+			machine.setAt(at, v1 * v2);
 			pcAccess.set(pc + 4);
 			
-			machine.debug("  " + v1 + "x" + v2 + "=" + memory[at] + " ==> " + at);
+			machine.debug("  " + v1 + "x" + v2 + "=" + machine.getAt(at) + " ==> " + at);
 			
 		}
 		
 	},
-	INPUT (3, 0) {
+	INPUT (3, 1) {
 		
 		@Override
-		public void execute(VirtualMachine machine, int[] memory, boolean[] modes, int pc, AtomicInteger pcAccess) throws RuntimeException {
+		public void execute(VirtualMachine machine, ParameterMode[] modes, int pc, AtomicInteger pcAccess, AtomicInteger rbAccess) throws RuntimeException {
 			
-			memory[memory[pc + 1]] = machine.requestInput();
+			int at = getRealPosition(machine, modes[0], machine.getAt(pc + 1), rbAccess);
+			
+			machine.setAt(at, machine.requestInput());
 			pcAccess.set(pc + 2);
+			
+			machine.debug("  " + machine.getAt(at) + " ==> " + at);
 			
 		}
 		
@@ -54,9 +58,9 @@ public enum OpCodeType {
 	OUTPUT (4, 1) {
 		
 		@Override
-		public void execute(VirtualMachine machine, int[] memory, boolean[] modes, int pc, AtomicInteger pcAccess) throws RuntimeException {
+		public void execute(VirtualMachine machine, ParameterMode[] modes, int pc, AtomicInteger pcAccess, AtomicInteger rbAccess) throws RuntimeException {
 			
-			int v = getRealValue(machine, 0, memory, modes[0], memory[pc + 1]);
+			long v = getRealValue(machine, 0, modes[0], machine.getAt(pc + 1), rbAccess);
 			machine.requestOutput(v);
 			pcAccess.set(pc + 2);
 			
@@ -66,13 +70,13 @@ public enum OpCodeType {
 	JUMP_IF_TRUE (5, 2) {
 		
 		@Override
-		public void execute(VirtualMachine machine, int[] memory, boolean[] modes, int pc, AtomicInteger pcAccess) throws RuntimeException {
-		
-			int v = getRealValue(machine,0, memory, modes[0], memory[pc + 1]);
+		public void execute(VirtualMachine machine, ParameterMode[] modes, int pc, AtomicInteger pcAccess, AtomicInteger rbAccess) throws RuntimeException {
+			
+			long v = getRealValue(machine,0, modes[0], machine.getAt(pc + 1), rbAccess);
 			
 			if (v != 0) {
 				
-				pcAccess.set(getRealValue(machine,1, memory, modes[1], memory[pc + 2]));
+				pcAccess.set((int) getRealValue(machine,1, modes[1], machine.getAt(pc + 2), rbAccess));
 				machine.debug("  JUMP ==> " + pcAccess.get());
 				
 			} else {
@@ -88,13 +92,13 @@ public enum OpCodeType {
 	JUMP_IF_FALSE (6, 2) {
 		
 		@Override
-		public void execute(VirtualMachine machine, int[] memory, boolean[] modes, int pc, AtomicInteger pcAccess) throws RuntimeException {
+		public void execute(VirtualMachine machine, ParameterMode[] modes, int pc, AtomicInteger pcAccess, AtomicInteger rbAccess) throws RuntimeException {
 			
-			int v = getRealValue(machine,0, memory, modes[0], memory[pc + 1]);
+			long v = getRealValue(machine,0, modes[0], machine.getAt(pc + 1), rbAccess);
 			
 			if (v == 0) {
 				
-				pcAccess.set(getRealValue(machine,1, memory, modes[1], memory[pc + 2]));
+				pcAccess.set((int) getRealValue(machine,1, modes[1], machine.getAt(pc + 2), rbAccess));
 				machine.debug("  JUMP ==> " + pcAccess.get());
 				
 			} else {
@@ -107,36 +111,51 @@ public enum OpCodeType {
 		}
 		
 	},
-	LESS_THAN (7, 2) {
+	LESS_THAN (7, 3) {
 		
 		@Override
-		public void execute(VirtualMachine machine, int[] memory, boolean[] modes, int pc, AtomicInteger pcAccess) throws RuntimeException {
+		public void execute(VirtualMachine machine, ParameterMode[] modes, int pc, AtomicInteger pcAccess, AtomicInteger rbAccess) throws RuntimeException {
 			
-			int v1 = getRealValue(machine,0, memory, modes[0], memory[pc + 1]);
-			int v2 = getRealValue(machine,1, memory, modes[1], memory[pc + 2]);
-			int at = memory[pc + 3];
+			long v1 = getRealValue(machine,0, modes[0], machine.getAt(pc + 1), rbAccess);
+			long v2 = getRealValue(machine,1, modes[1], machine.getAt(pc + 2), rbAccess);
+			int at = getRealPosition(machine, modes[2], machine.getAt(pc + 3), rbAccess);
 			
-			memory[at] = v1 < v2 ? 1 : 0;
+			machine.setAt(at, v1 < v2 ? 1 : 0);
 			pcAccess.set(pc + 4);
 			
-			machine.debug("  (" + v1 + " < " + v2 + ") = " + memory[at] + " ==> " + at);
+			machine.debug("  (" + v1 + " < " + v2 + ") = " + machine.getAt(at) + " ==> " + at);
 			
 		}
 		
 	},
-	EQUALS (8, 2) {
+	EQUALS (8, 3) {
 		
 		@Override
-		public void execute(VirtualMachine machine, int[] memory, boolean[] modes, int pc, AtomicInteger pcAccess) throws RuntimeException {
+		public void execute(VirtualMachine machine, ParameterMode[] modes, int pc, AtomicInteger pcAccess, AtomicInteger rbAccess) throws RuntimeException {
 			
-			int v1 = getRealValue(machine,0, memory, modes[0], memory[pc + 1]);
-			int v2 = getRealValue(machine,1, memory, modes[1], memory[pc + 2]);
-			int at = memory[pc + 3];
+			long v1 = getRealValue(machine,0, modes[0], machine.getAt(pc + 1), rbAccess);
+			long v2 = getRealValue(machine,1, modes[1], machine.getAt(pc + 2), rbAccess);
+			int at = getRealPosition(machine, modes[2], machine.getAt(pc + 3), rbAccess);
 			
-			memory[at] = v1 == v2 ? 1 : 0;
+			machine.setAt(at, v1 == v2 ? 1 : 0);
 			pcAccess.set(pc + 4);
 			
-			machine.debug("  (" + v1 + " == " + v2 + ") = " + memory[at] + " ==> " + at);
+			machine.debug("  (" + v1 + " == " + v2 + ") = " + machine.getAt(at) + " ==> " + at);
+			
+		}
+		
+	},
+	RELATIVE_BASE_OFFSET(9, 1) {
+		
+		@Override
+		public void execute(VirtualMachine machine, ParameterMode[] modes, int pc, AtomicInteger pcAccess, AtomicInteger rbAccess) throws RuntimeException {
+			
+			long offset = getRealValue(machine, 0, modes[0], machine.getAt(pc + 1), rbAccess);
+			int at = (int) (rbAccess.get() + offset);
+			rbAccess.set(at);
+			pcAccess.set(pc + 2);
+			
+			machine.debug("  RB += " + offset + " ==> " + at);
 			
 		}
 		
@@ -144,7 +163,7 @@ public enum OpCodeType {
 	END (99, 0) {
 		
 		@Override
-		public void execute(VirtualMachine machine, int[] memory, boolean[] modes, int pc, AtomicInteger pcAccess) throws RuntimeException {
+		public void execute(VirtualMachine machine, ParameterMode[] modes, int pc, AtomicInteger pcAccess, AtomicInteger rbAccess) throws RuntimeException {
 			throw new StopVirtualProgramException();
 		}
 		
@@ -160,7 +179,7 @@ public enum OpCodeType {
 		
 	}
 	
-	public abstract void execute(VirtualMachine machine, int[] memory, boolean[] modes, int pc, AtomicInteger pcAccess) throws RuntimeException;
+	public abstract void execute(VirtualMachine machine, ParameterMode[] modes, int pc, AtomicInteger pcAccess, AtomicInteger rbAccess) throws RuntimeException;
 
 	public static final Map<Integer, OpCodeType> INT_CODES = new HashMap<>(values().length);
 	
@@ -175,9 +194,31 @@ public enum OpCodeType {
 		return INT_CODES.get(intCode);
 	}
 	
-	protected static int getRealValue(VirtualMachine machine, int param, int[] memory, boolean mode, int raw) {
-		machine.debugParameter(param, mode, raw, mode ? 0 : memory[raw]);
-		return mode ? raw : memory[raw];
+	protected static long getRealValue(VirtualMachine machine, int param, ParameterMode mode, long raw, AtomicInteger rbAccess) {
+		
+		if (mode != ParameterMode.IMMEDIATE) {
+			
+			long position = (mode == ParameterMode.POSITION ? raw : rbAccess.get() + raw);
+			long value = machine.getAt((int) position);
+			machine.debugParameter(param, mode, raw, value);
+			return value;
+			
+		} else {
+			
+			machine.debugParameter(param, mode, raw, 0);
+			return raw;
+			
+		}
+		
+	}
+	
+	protected static int getRealPosition(VirtualMachine machine, ParameterMode mode, long raw, AtomicInteger rbAccess) {
+		
+		if (mode == ParameterMode.IMMEDIATE)
+			return -1;
+		
+		return (int) (mode == ParameterMode.POSITION ? raw : rbAccess.get() + raw);
+		
 	}
 	
 }

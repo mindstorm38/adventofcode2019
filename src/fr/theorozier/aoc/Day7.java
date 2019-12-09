@@ -6,6 +6,7 @@ import fr.theorozier.aoc.intcode.VirtualMachine;
 import java.io.IOException;
 import java.util.*;
 import java.util.concurrent.atomic.AtomicInteger;
+import java.util.concurrent.atomic.AtomicLong;
 import java.util.concurrent.atomic.AtomicReference;
 
 public class Day7 {
@@ -75,11 +76,11 @@ public class Day7 {
 	public static void main(String[] args) throws IOException {
 		
 		String content = Utils.getFileContent("day7input");
-		int[] baseMemory = Utils.parseIntList(content);
+		long[] baseMemory = Utils.parseLongList(content);
 		
 		VirtualMachine[] amplifiers = new VirtualMachine[5];
 		
-		AtomicInteger lastOutput = new AtomicInteger();
+		AtomicLong lastOutput = new AtomicLong();
 		AtomicReference<int[]> setting = new AtomicReference<>();
 		AtomicReference<int[]> inputCounts = new AtomicReference<>(new int[5]);
 		
@@ -95,14 +96,14 @@ public class Day7 {
 				if (inputCounts.get()[finalAmpl]++ >= 1) {
 					return lastOutput.get();
 				} else {
-					return setting.get()[finalAmpl];
+					return (long) setting.get()[finalAmpl];
 				}
 				
 			});
 			
 		}
 		
-		int max = 0;
+		long max = 0;
 		boolean halted;
 		
 		for (int i = 0; i < 5; ++i) {

@@ -3,6 +3,7 @@ package fr.theorozier.aoc;
 import java.io.IOException;
 import java.io.InputStream;
 import java.util.function.IntConsumer;
+import java.util.function.LongConsumer;
 
 public class Utils {
 	
@@ -37,7 +38,14 @@ public class Utils {
 		} catch (NumberFormatException ignored) {}
 	}
 	
-	public static int getNthDigit(int number, int base, int nth) {
+	public static void safeParseLong(String str, LongConsumer consumer) {
+		try {
+			long l = Long.parseLong(str);
+			consumer.accept(l);
+		} catch (NumberFormatException ignored) {}
+	}
+	
+	public static int getNthDigit(long number, int base, int nth) {
 		return (int) ((number / Math.pow(base, nth)) % base);
 	}
 	
@@ -49,6 +57,20 @@ public class Utils {
 		for (int i = 0; i < arr.length; i++) {
 			int j = i;
 			Utils.safeParseInt(raw[i], n -> arr[j] = n);
+		}
+		
+		return arr;
+		
+	}
+	
+	public static long[] parseLongList(String content) {
+		
+		String[] raw = content.split(",");
+		long[] arr = new long[raw.length];
+		
+		for (int i = 0; i < arr.length; i++) {
+			int j = i;
+			Utils.safeParseLong(raw[i], n -> arr[j] = n);
 		}
 		
 		return arr;
