@@ -39,6 +39,7 @@ public class VirtualMachine {
 	}
 	
 	private static final Predicate<OpCodeType> TRUE_PREDICATE = (oct) -> true;
+	private static final Predicate<OpCodeType> FALSE_PREDICATE = (oct) -> false;
 	
 	// Class //
 	
@@ -193,6 +194,10 @@ public class VirtualMachine {
 		
 		return false;
 		
+	}
+	
+	public boolean runOneStep() {
+		return this.runWhile(FALSE_PREDICATE);
 	}
 	
 	public boolean run() {
