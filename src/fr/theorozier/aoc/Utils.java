@@ -56,7 +56,7 @@ public class Utils {
 		
 		for (int i = 0; i < arr.length; i++) {
 			int j = i;
-			Utils.safeParseInt(raw[i], n -> arr[j] = n);
+			Utils.safeParseInt(raw[i].trim(), n -> arr[j] = n);
 		}
 		
 		return arr;
@@ -67,10 +67,9 @@ public class Utils {
 		
 		String[] raw = content.split(",");
 		long[] arr = new long[raw.length];
-		
 		for (int i = 0; i < arr.length; i++) {
 			int j = i;
-			Utils.safeParseLong(raw[i], n -> arr[j] = n);
+			Utils.safeParseLong(raw[i].trim(), n -> arr[j] = n);
 		}
 		
 		return arr;
