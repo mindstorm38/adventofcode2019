@@ -4,7 +4,7 @@ import fr.theorozier.aoc.intcode.OpCodeType;
 import fr.theorozier.aoc.intcode.OutputSequence;
 import fr.theorozier.aoc.intcode.VirtualMachine;
 
-import java.io.IOException;
+import java.io.*;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Objects;
@@ -76,6 +76,9 @@ public class Day13 {
 		
 		int score = 0;
 		
+		FileOutputStream outFd = new FileOutputStream(FileDescriptor.out);
+		System.setOut(new PrintStream(new BufferedOutputStream(outFd, 128), false));
+		
 		while (true) {
 			
 			outputCounter.set(0);
@@ -132,6 +135,8 @@ public class Day13 {
 				System.out.println();
 				
 			}
+			
+			System.out.flush();
 			
 		}
 		
